@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.3.xsd">
+	
+	<context:property-placeholder location="classpath:config.properties"/>
+	
+	<import resource="spring-dao.xml"/>
+	<import resource="spring-redis.xml"/>
+	
+	<context:component-scan base-package="com.shiro">
+		<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller" />
+		<context:exclude-filter type="annotation" expression="org.springframework.web.bind.annotation.ControllerAdvice" />
+	</context:component-scan>
+	
+	<!-- Shiro权限过滤过滤器定义 -->
+	<bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+		<property name="securityManager" ref="defaultSecurityManager"/>
+		<property name="loginUrl" value="login.html"/>
+		<property name="unauthorizedUrl" value="403.html"/>
+		<property name="filterChainDefinitions">
+			<value>
+				/login.html = anon
+				/shiro/subLogin = anon
+				/shiro/testRole = roles["user"]
+				/shiro/testRole1 = roles["user","admin"]
+				/shiro/testPerm = perms["user:select"]
+				/shiro/testPerm1 = perms["user:select","user:update"]
+				/shiro/testRole2 = roleOr["admin","user","system"]
+                /shiro/testPerm2 = permOr["user:select","user:update","user:delete"]
+				/* = authc
+			</value>
+		</property>
+		<property name="filters">
+			<util:map>
+				<entry key="roleOr" value-ref="rolesOrFilter"/>
+				<entry key="permOr" value-ref="permOrFilter"></entry>
+			</util:map>
+		</property>
+	</bean>
+	
+	<!-- 自定义filter -->
+    <bean id="rolesOrFilter" class="com.shiro.filter.RoleOrFilter"/>
+    <bean id="permOrFilter" class="com.shiro.filter.PermOrFilter"/>
+	
+	<bean id="defaultSecurityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+		<property name="realm" ref="customRealm"/>
+		<property name="sessionManager" ref="sessionManager"></property>
+	</bean>
+	
+	<bean id="customRealm" class="com.shiro.realm.CustomRealm">
+		<property name="credentialsMatcher" ref="credentialsMatcher"/>
+	</bean>
+	
+	<bean id="credentialsMatcher" class="org.apache.shiro.authc.credential.HashedCredentialsMatcher">
+		<property name="hashAlgorithmName" value="md5"/>
+		<property name="hashIterations" value="1"/>
+	</bean>
+	
+	<bean class="org.apache.shiro.session.mgt.DefaultSessionManager" id="sessionManager">
+		<property name="sessionDAO">
+			<bean class="com.shiro.session.RedisSessionDao"></bean>
+		</property>
+	</bean>
+
+</beans>
